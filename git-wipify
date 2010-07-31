@@ -1,0 +1,8 @@
+#!/bin/bash -e
+
+GIT=`which git`
+
+feature=${1?Please specify feature name}
+remote=${2:-github}
+
+"$GIT" push "$remote" "$feature":wip."$feature"
