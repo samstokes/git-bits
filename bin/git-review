@@ -1,7 +1,5 @@
 #!/bin/bash -e
 
-. "$HOME"/lib/ss496-shutil/util.bash
-
 GIT=`which git`
 GITK=`which gitk`
 
