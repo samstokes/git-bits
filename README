@@ -1,0 +1,5 @@
+These are utilities for working with git, including some higher-level commands
+to support certain workflows.
+
+They are (obviously) undocumented and unsupported right now, so YMMV.
+Happy to discuss them - Github-message me.
