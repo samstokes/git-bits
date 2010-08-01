@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DIRNAME=`dirname "$0"`
-. "$DIRNAME/../util.bash"
+. "$DIRNAME/../lib/util.bash"
 
 GIT=`which git`
 
