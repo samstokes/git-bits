@@ -1,5 +1,13 @@
 #!/bin/sh
+
+# Have to set the number of local commits here: i.e. how many commits are
+# there in the floating branch?
+# Thus you have to tweak the script each time you add or remove a commit to
+# your floating branch.
+# TODO find a way to detect the number of commits at runtime.
+
 NUM_LOCAL_COMMITS=3
+
 GIT=`which git`
 command="$1"; shift
 
