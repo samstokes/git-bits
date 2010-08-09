@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# Merges a feature branch into the current branch, then deletes the feature
+# branch.
+#
+# Always creates a merge commit to show the merge history, and prompts you to
+# enter a message for the merge commit (so you can comment on what the
+# merged-in feature does or what it's for, at a higher level than the
+# implementation commits in the feature branch itself).
+#
+# e.g.
+#   git merge-feature new-widgets
+
 DIRNAME=`dirname "$0"`
 . "$DIRNAME/../lib/util.bash"
 
