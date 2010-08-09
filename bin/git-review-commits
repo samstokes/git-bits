@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Uses 'git difftool' to review, one commit at a time, all commits in a
+# specified range.  Goes through the commits in the order you'd expect (i.e.
+# parents precede children).
+#
+# e.g.
+#   git review-commits master..fix-widgets
+
+range=${1?Please specify range of commits to review}
+
+function redline() {
+  echo -ne '\033[01;31m'
+  for i in {0..79}; do echo -n '-'; done
+  echo -e '\033[00m'
+}
+
+for commit in `git rev-list --reverse "$1"`; do
+  echo -e "\033[01;31mReviewing commit \033[01;36m$commit\033[01;31m...\033[00m"
+
+  git show --pretty=oneline --abbrev-commit $commit | head -1
+
+  echo -e '\033[01;31mPress Enter to continue.\033[00m'
+  redline
+  read
+
+  git committool $commit
+  echo
+  redline
+done
