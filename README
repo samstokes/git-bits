@@ -1,8 +1,0 @@
-These are utilities for working with git, including some higher-level commands
-to support certain workflows.
-
-They rely on Git's behaviour of hooking into your PATH and turning any command
-"git-foo" into a git subcommand "git foo".
-
-They are (obviously) undocumented and unsupported right now, so YMMV.
-Happy to discuss them - Github-message me.
