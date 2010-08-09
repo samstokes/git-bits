@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Shortcut for using difftool to view the changes in a single commit: e.g.
+#   git committool 0123cafe
+#
+# To achieve enlightenment, do something like
+#   git config --global alias.ct committool
+# so that you can then say
+#   git ct 0123cafe
+
+exec git difftool ${1?Please specify commit to diff}{^,}
