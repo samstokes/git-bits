@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Opens gitk (set GIT_VISUAL to override), showing all heads in the local repo and on github,
 # as far as they have not yet been merged into master. The beta head is omitted to make
