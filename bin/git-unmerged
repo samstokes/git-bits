@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Opens gitk (set GIT_VISUAL to override), showing all heads in the local repo and on github,
+# as far as they have not yet been merged into master. The beta head is omitted to make
+# the history more readable, and all branches starting with 'shelf.' are also omitted.
+
+"${GIT_VISUAL:-gitk}" \
+    $(  git rev-parse --branches --remotes=github --not master --remotes='github/shelf.*' | \
+        grep -v `git rev-parse beta` )
