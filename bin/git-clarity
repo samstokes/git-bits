@@ -1,0 +1,112 @@
+#!/usr/bin/python
+from subprocess import Popen, PIPE
+from collections import defaultdict
+from tempfile import mkstemp
+from os import fdopen, unlink
+from sys import exit
+
+try:
+    from entrypoint import entrywithfile, UsageError
+except:
+    print """
+git clarity requires the Python entrypoint library, from pypi.
+$ pip install entrypoint
+    """.strip()
+    exit()
+
+def git(*args):
+    """
+        Call git with the arguments, and return the stdout
+    """
+    proc = Popen(("git",) + args, stdout=PIPE)
+    for line in proc.stdout:
+        yield line
+    proc.wait()
+
+@entrywithfile(output='w')
+def main(no_merges=False, no_branches=False, format="pdf", output="-"):
+    """
+        git clarity creates a graphviz graph of the interesting revisions
+        in your repository's history.
+
+        By default any commit with more than one parent (a "merge"), or more than one
+        child (a "branch"), is shown. You can suppress either, or both, using
+        the --no-branches and --no-merges arguments.
+
+        This will always show all tagged commits.
+
+        -M --no_merges: Removes merge commits from the tree
+        -B --no_branches: Removes branch commits from the tree
+        -o --output: Put the output to the file (default: -, stdout)
+        -T --format: The output format (default: pdf, valid: dot)
+
+        Future Work: A mechanism for specifying subsets of tags (by
+        date/remote/name?) and an option to supress "dull" sections of tree
+        (areas with lots of merges/branches but nothing tagged). Would also
+        be useful to experiment with graphviz options. Also an option to
+        show commit summary on non-tagged commits.
+    """
+
+    if format not in ["dot", "pdf"]:
+        raise UsageError("Format may only be dot or pdf")
+
+    # Construct a doubly-linked graph, child in children[parent] <=> parent in parents[child]
+    parents = defaultdict(list)
+    children = defaultdict(list)
+    refnames = {}
+
+    i=0
+    for line in git("log", "--all","--format=format:%H|%P|%d","--topo-order"):
+
+        child, commits, desc = line.strip().split("|")
+
+        if desc:
+            refnames[child] = desc
+        elif len(commits) == 0:
+            refnames[child] = "(ROOT%s)" % i
+            i+=1
+
+        for parent in commits.split(" "):
+            if not parent in parents[child]:
+                parents[child].append(parent)
+                children[parent].append(child)
+
+    size = 0
+    while size != len(parents) + len(children):
+        size = len(parents) + len(children)
+
+        for commit in parents.keys():
+
+            if ((no_merges or len(parents[commit]) == 1) and
+                    (no_branches or len(children[commit]) == 1) and
+                        (commit not in refnames)):
+
+                for parent in parents[commit]:
+                    for child in children[commit]:
+                        if commit in children[parent]: children[parent].remove(commit)
+                        if commit in parents[child]: parents[child].remove(commit)
+                        if not parent in parents[child]: parents[child].append(parent)
+                        if not child in children[parent]: children[parent].append(child)
+
+                del parents[commit], children[commit]
+
+    edges = []
+    for parent in parents:
+        for child in children[parent]:
+            edges.append([parent, child])
+
+    def name(commit):
+        return refnames[commit] if commit in refnames else commit[0:10]
+
+    result =["digraph G {"]
+    for edge in edges:
+        result.append('"%s" -> "%s"' % tuple(map(name,edge)))
+    result.append("}")
+    result = "\n".join(result)
+
+    if format == "dot":
+        output.write(result)
+    elif format == "pdf":
+        Popen(["dot", "-Tpdf"], stdin=PIPE, stdout=output).communicate(result)
+    else:
+        raise 

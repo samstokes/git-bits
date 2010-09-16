@@ -10,6 +10,8 @@ They are largely undocumented and unsupported right now, so YMMV.  Happy to
 discuss them - Github-message me.
 
 
+## git-clarity ##
+Shows a graph of branch points, merges and tagged commits. (see also git clarity -h)
 
 ## git-committool ##
 Shortcut for using difftool to view the changes in a single commit.
