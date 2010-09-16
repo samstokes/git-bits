@@ -1,11 +1,10 @@
 #!/bin/bash -e
 
 GIT=`which git`
-GITK=`which gitk`
 
 feature=${1?Please specify feature name}
 master=${2:-master}
 
 "$GIT" checkout -b "$feature" github/wip."$feature"
 
-"$GITK" "$feature" ^"$master" &
+"$GIT" review-commits "$master".."$feature"
