@@ -43,3 +43,6 @@ something that's safe to alias to something short.
 
 ## git-wipify ##
 **TODO**
+
+***
+vim:tw=79
