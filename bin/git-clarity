@@ -8,6 +8,7 @@ from sys import exit
 try:
     from entrypoint import entrywithfile, UsageError
 except:
+    raise
     print """
 git clarity requires the Python entrypoint library, from pypi.
 $ pip install entrypoint
@@ -16,97 +17,125 @@ $ pip install entrypoint
 
 def git(*args):
     """
-        Call git with the arguments, and return the stdout
+        Call git with the arguments, and yield the stdout
     """
     proc = Popen(("git",) + args, stdout=PIPE)
     for line in proc.stdout:
         yield line
-    proc.wait()
+    # User will see git error message on stderr
+    if proc.wait():
+        exit()
 
 @entrywithfile(output='w')
-def main(no_merges=False, no_branches=False, format="pdf", output="-"):
+def main(no_merges=False, no_forks=False, all=False, format="pdf", output="-",*args):
     """
-        git clarity creates a graphviz graph of the interesting revisions
-        in your repository's history.
+        git clarity creates clear graphviz graphs based on your repostiries history.
 
-        By default any commit with more than one parent (a "merge"), or more than one
-        child (a "branch"), is shown. You can suppress either, or both, using
-        the --no-branches and --no-merges arguments.
+        By default all "named commits" (those which have a ref associated with
+        them), all "fork commits" (those which have more than one child), all
+        "merge commits" (those which hvae more than one parent), all "initial
+        commits" (those with no parents) and all "last commits" (those with no
+        children) are preserved. All other commits are deleted.
 
-        This will always show all tagged commits.
+        The initial set of commits is generated from git log. Any positional
+        arguments to git clarity will be passed on to git log (the default
+        argument is --all).  If you want to pass flags to git log seperate them
+        from the git clarity flags with --. Particularly --before, --after,
+        --since, --until, --branches, --tags, --remotes and --skip, along with
+        passing commit names may be useful. You should try and ensure that your
+        git log command will produce reasonably contiguous portions of hitsory,
+        or your graph will not have many edges.
 
-        -M --no_merges: Removes merge commits from the tree
-        -B --no_branches: Removes branch commits from the tree
-        -o --output: Put the output to the file (default: -, stdout)
-        -T --format: The output format (default: pdf, valid: dot)
+        Still TODO: ignoring dull sections of graph (with lots of unnamed
+        commits, but lots of branches and merges), and filtering for dull named
+        commits.  Formatting (both graphviz options and node labels). Default
+        output file on disk?
 
-        Future Work: A mechanism for specifying subsets of tags (by
-        date/remote/name?) and an option to supress "dull" sections of tree
-        (areas with lots of merges/branches but nothing tagged). Would also
-        be useful to experiment with graphviz options. Also an option to
-        show commit summary on non-tagged commits.
+        args: Any arguments to be passed to git log when generating the tree.
+             If you want to pass arguments begining with a hyphen, separate them with a --
+
+        -M --no-merges: Don't include commits just because they are merges.
+        -F --no-forks:  Don't include commits just because they are forks.
+        -a --all: Include all commits (cannot be used with any --no-* option)
+        -T --format: The output format (default: pdf), raw can be used to get the input to graphviz,
+                     for other valid options consult `dot -T?`
+        -o --output: Put the output to a file (default: -, stdout)
     """
 
-    if format not in ["dot", "pdf"]:
-        raise UsageError("Format may only be dot or pdf")
+    if (no_merges or no_forks) and all:
+        raise UsageError("It doesn't make sense to ask for --all with --no-merges or --no-forks")
 
-    # Construct a doubly-linked graph, child in children[parent] <=> parent in parents[child]
-    parents = defaultdict(list)
-    children = defaultdict(list)
+    parents = defaultdict(set)
+    children = defaultdict(set)
     refnames = {}
+    interesting = set()
 
-    i=0
-    for line in git("log", "--all","--format=format:%H|%P|%d","--topo-order"):
+    # Read entire graph
+    if not args:
+        args = ("--all",)
+
+    args = args + ("--format=format:%H|%P|%d",)
+
+    for line in git("log", *args):
 
         child, commits, desc = line.strip().split("|")
 
+        # Make "named commits" interesting
         if desc:
             refnames[child] = desc
-        elif len(commits) == 0:
-            refnames[child] = "(ROOT%s)" % i
-            i+=1
+            interesting.add(child)
 
-        for parent in commits.split(" "):
-            if not parent in parents[child]:
-                parents[child].append(parent)
-                children[parent].append(child)
+        if commits:
+            for parent in commits.split(" "):
+                parents[child].add(parent)
+                children[parent].add(child)
 
-    size = 0
-    while size != len(parents) + len(children):
-        size = len(parents) + len(children)
+    # Make "initial commits" interesting
+    for parent in children.keys():
+        if not parents[parent]:
+            interesting.add(parent)
 
-        for commit in parents.keys():
+    # Make "trailing commits" interesting
+    for child in parents.keys():
+        if not children[child]:
+            interesting.add(child)
 
-            if ((no_merges or len(parents[commit]) == 1) and
-                    (no_branches or len(children[commit]) == 1) and
-                        (commit not in refnames)):
+    # Delete everything that isn't interesting
+    if not all:
+        size = 0
+        while size != len(parents) + len(children):
+            size = len(parents) + len(children)
 
-                for parent in parents[commit]:
-                    for child in children[commit]:
-                        if commit in children[parent]: children[parent].remove(commit)
-                        if commit in parents[child]: parents[child].remove(commit)
-                        if not parent in parents[child]: parents[child].append(parent)
-                        if not child in children[parent]: children[parent].append(child)
+            for commit in parents.keys():
+                if ((no_merges or len(parents[commit]) == 1) and
+                        (no_forks or len(children[commit]) == 1) and
+                            (commit not in interesting)):
 
-                del parents[commit], children[commit]
+                    for parent in parents[commit]:
+                        for child in children[commit]:
+                            children[parent].discard(commit)
+                            children[parent].add(child)
+                            parents[child].discard(commit)
+                            parents[child].add(parent)
 
+                    del parents[commit], children[commit]
+
+    # Extract list of edges from graph
     edges = []
-    for parent in parents:
-        for child in children[parent]:
+    for child in parents:
+        for parent in parents[child]:
             edges.append([parent, child])
 
-    def name(commit):
-        return refnames[commit] if commit in refnames else commit[0:10]
+    # Format as graphviz input.
+    name = lambda commit: refnames[commit] if commit in refnames else commit[0:10]
 
-    result =["digraph G {"]
-    for edge in edges:
-        result.append('"%s" -> "%s"' % tuple(map(name,edge)))
-    result.append("}")
+    result = ["digraph G {"]
+    result += [('"%s" -> "%s"' % tuple(map(name,edge))) for edge in edges]
+    result += ["}",""]
     result = "\n".join(result)
 
-    if format == "dot":
+    # Output
+    if format == "raw":
         output.write(result)
-    elif format == "pdf":
-        Popen(["dot", "-Tpdf"], stdin=PIPE, stdout=output).communicate(result)
     else:
-        raise 
+        Popen(["dot", "-T" + format], stdin=PIPE, stdout=output).communicate(result)
