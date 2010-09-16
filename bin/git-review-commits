@@ -20,11 +20,15 @@ for commit in `git rev-list --reverse "$1"`; do
 
   git show --pretty=oneline --abbrev-commit $commit | head -1
 
-  echo -e '\033[01;31mPress Enter to continue.\033[00m'
+  echo -e '\033[01;31mPress Enter to review this commit, or type "skip" to skip it.\033[00m'
   redline
-  read
+  read skip
 
-  git committool $commit
-  echo
+  if [[ "$skip" = "skip" ]]; then
+    echo "Okay, skipping $commit."
+  else
+    git committool $commit
+    echo
+  fi
   redline
 done
