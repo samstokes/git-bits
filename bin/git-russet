@@ -1,0 +1,33 @@
+#!/bin/bash -e
+
+# Because 'git reset' is too damn confusing.
+#
+# e.g.:
+#    git russet --hard rev
+#
+# I want to be able to alias "git reset --hard" to something shorter, but
+# it's too damn dangerous to be easy to type.  So this checks whether you'd
+# lose changes, and prompts you if so.
+
+DIRNAME=`dirname "$0"`
+. "$DIRNAME/../lib/util.bash"
+
+if [[ "$1" != "--hard" ]]; then
+  exec git reset "$@"
+fi
+
+if [[ $(git status -s | awk '$1 != "??"' | wc -l) -ne 0 ]]; then
+  echo "Are you sure you want to reset --hard?  Working tree is dirty:"
+  echo
+  git status
+  echo
+
+  echo -n "Go for it? [y/N] "
+  read answer
+
+  if [[ "$answer" != "y" ]]; then
+    script_die "Thought not."
+  fi
+fi
+
+exec git reset "$@"
