@@ -4,6 +4,7 @@ from collections import defaultdict
 from tempfile import mkstemp
 from os import fdopen, unlink
 from sys import exit
+from random import random
 
 try:
     from entrypoint import entrywithfile, UsageError
@@ -27,54 +28,59 @@ def git(*args):
         exit()
 
 @entrywithfile(output='w')
-def main(no_merges=False, no_forks=False, all=False, format="pdf", output="-",*args):
+def main(no_merges=False, no_forks=False, compress=False, all=False, format="pdf", output="-",*args):
     """
-        git clarity creates clear graphviz graphs based on your repostiries history.
+        git clarity creates graphs of the history of your repository's branches.
 
-        By default all "named commits" (those which have a ref associated with
-        them), all "fork commits" (those which have more than one child), all
-        "merge commits" (those which hvae more than one parent), all "initial
-        commits" (those with no parents) and all "last commits" (those with no
-        children) are preserved. All other commits are deleted.
+        The graph should show you at a glance where different branches begin
+        and are merged; allowing you to determine which branches include which
+        features and how to plan rebases and merges.
 
-        The initial set of commits is generated from git log. Any positional
-        arguments to git clarity will be passed on to git log (the default
-        argument is --all).  If you want to pass flags to git log seperate them
-        from the git clarity flags with --. Particularly --before, --after,
-        --since, --until, --branches, --tags, --remotes and --skip, along with
-        passing commit names may be useful. You should try and ensure that your
-        git log command will produce reasonably contiguous portions of hitsory,
-        or your graph will not have many edges.
+        By default all "named commits" (those pointed at by a ref), "fork
+        commits" (those which have more than one child), "merge commits"
+        (those which have more than one parent),  "initial commits" (those
+        with no parents) and "trailing commits" (those with no children) are
+        preserved. All other commits are deleted.
 
-        Still TODO: ignoring dull sections of graph (with lots of unnamed
-        commits, but lots of branches and merges), and filtering for dull named
-        commits.  Formatting (both graphviz options and node labels). Default
-        output file on disk?
-
-        args: Any arguments to be passed to git log when generating the tree.
-             If you want to pass arguments begining with a hyphen, separate them with a --
+        args: Arguments to be passed to git-log. This allows you
+              to construct smaller graphs by filtering on reachability or date.
+              To pass flags to git-log, separate them from git-clarity arguments
+              with --. The default is "--all", to see only branches merged into
+              master, try `git clarity master`.
 
         -M --no-merges: Don't include commits just because they are merges.
         -F --no-forks:  Don't include commits just because they are forks.
-        -a --all: Include all commits (cannot be used with any --no-* option)
+        -c --compress:  Compress regions of merge and fork commits that contain
+                        no other interesting commits. (Experimental)
+        -a --all:       Include all commits, acts like `git-graphviz` 
+                        (cannot be used with any --no-* option or --compress)
         -T --format: The output format (default: pdf), raw can be used to get the input to graphviz,
                      for other valid options consult `dot -T?`
         -o --output: Put the output to a file (default: -, stdout)
+
+        Still TODO: Nicer output, a default mode of operation that shows something useful,
+        better specified/more interesting exclusion options.
+
+        Be careful: In huge repositories, even the compressed graph can contain thousands
+        of very interconnected nodes, it may take some time for dot to render such enormity.
     """
 
-    if (no_merges or no_forks) and all:
-        raise UsageError("It doesn't make sense to ask for --all with --no-merges or --no-forks")
+    if (no_merges or no_forks or compress) and all:
+        raise UsageError("It doesn't make sense to ask for --all with --no-merges, --no-forks or --compress")
+
+    no_initial = no_trailing = False
 
     parents = defaultdict(set)
     children = defaultdict(set)
     refnames = {}
     interesting = set()
+    topo_order = []
 
     # Read entire graph
     if not args:
         args = ("--all",)
 
-    args = args + ("--format=format:%H|%P|%d",)
+    args = ("--format=format:%H|%P|%d", "--topo-order") + args
 
     for line in git("log", *args):
 
@@ -84,6 +90,8 @@ def main(no_merges=False, no_forks=False, all=False, format="pdf", output="-",*a
         if desc:
             refnames[child] = desc
             interesting.add(child)
+
+        topo_order.append(child)
 
         if commits:
             for parent in commits.split(" "):
@@ -100,8 +108,27 @@ def main(no_merges=False, no_forks=False, all=False, format="pdf", output="-",*a
         if not children[child]:
             interesting.add(child)
 
-    # Delete everything that isn't interesting
-    if not all:
+
+    def delete_normal():
+        """
+            Remove nodes from the graph when they give no useful information.
+            (i.e. they are not forks, merges, named, etc.)
+
+            This is called recursively, perhaps it shouldn't be, as this causes
+            simple fork<->merges to disappear magically:
+
+            x--o--o    ->  x--o       -> x--x
+               |  |              \
+               o--o--x            o--x 
+
+             This doesn't help with more complex examples:
+
+             x--o--o
+                |  | \
+                o--+--o
+                 \ |  |
+                   o--o--x
+        """
         size = 0
         while size != len(parents) + len(children):
             size = len(parents) + len(children)
@@ -119,6 +146,87 @@ def main(no_merges=False, no_forks=False, all=False, format="pdf", output="-",*a
                             parents[child].add(parent)
 
                     del parents[commit], children[commit]
+
+    def unify_compress():
+        """
+            This deals with the situation where a branch has been merged in multiple times
+
+                x  
+                | \
+             x--o--o--x
+
+             It's not really necessary to show both merge commits, just that the branch was
+             merged between the first and the second (some number of times).
+
+             The node label tries to signify this, not sure how clear it is though.
+
+             The idea is that nodes which can reach the same interesting ancestors and interesting
+             children (by transitive parent and child relationships) contain no new information.
+
+             NOTE: I am convinced there's a bug here, because doing this multiple times shouldn't
+             make a difference.
+        """
+        size = 0
+        while size != len(parents) + len(children):
+            delete_normal()
+            size = len(parents) + len(children)
+
+            ancestors = defaultdict(set)
+            descendants = defaultdict(set)
+
+            for commit in reversed(topo_order):
+                if commit in parents:
+                    for parent in parents[commit]:
+                        ancestors[commit].update(ancestors[parent])
+                        if parent in interesting:
+                            ancestors[commit].add(parent)
+                else:
+                    # Ensure that different initial nodes are treated differently.
+                    # (despite otherwise sharing the same, empty, ancestor set)
+                    ancestors[commit].add(random())
+
+            for commit in topo_order:
+                if commit in children:
+                    for child in children[commit]:
+                        descendants[commit].update(descendants[child])
+                        if child in interesting:
+                            descendants[commit].add(child)
+                else:
+                    descendants[commit].add(random())
+
+            inverse = defaultdict(list)
+            for commit in topo_order:
+                inverse[frozenset(descendants[commit]), frozenset(ancestors[commit])].append(commit)
+
+            for commits in inverse.values():
+                if len(commits) > 1:
+                    result = commits[-1][:6] + ".." + commits[0][:6]
+                    refnames[result] = result
+                    for commit in commits:
+                        if not commit in interesting:
+                            if commit in parents:
+                                for parent in parents[commit]:
+                                    children[parent].discard(commit)
+                                    if parent != result:
+                                        children[parent].add(result)
+                                        parents[result].add(parent)
+                                del parents[commit]
+
+                            if commit in children:
+                                for child in children[commit]:
+                                    parents[child].discard(commit)
+                                    if child != result:
+                                        parents[child].add(result)
+                                        children[result].add(child)
+                                del children[commit]
+            # Tidy up any newly created single-parent, single-child commits.
+            delete_normal()
+
+    if not all:
+        if compress:
+            unify_compress()
+        else:
+            delete_normal()
 
     # Extract list of edges from graph
     edges = []
