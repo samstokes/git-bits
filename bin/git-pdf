@@ -102,10 +102,9 @@ cat > $bundle_file << EOF
 \def\PYZrb{]}
 \makeatother
 \begin{document}
-\title{wip.datamodel}
-\maketitle
-\tableofcontents
 EOF
+
+echo "\title{$feature}\maketitle\tableofcontents" >> $bundle_file
 
 for source_file in $commits $files; do
     if [ -f "$source_file" ]; then
