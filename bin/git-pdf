@@ -7,7 +7,7 @@ master=${2:-master}
 
 range="${master}..${feature}"
 
-files=`git log --name-only --format=format: $range | sort | uniq | grep '\.\(rb\|js\|erb\)$'`
+files=`git log --name-only --format=format: $range | sort | uniq`
 
 tex_dir=`mktemp -d -t git-pdf`
 commits_dir=`mktemp -d -t git-pdf-commits`
@@ -114,7 +114,7 @@ for source_file in $commits $files; do
         title=`echo "$short_file" | sed -e 's/_/\\\\_/g'`
         echo "Highlighting $short_file..."
         mkdir -p $output_dir
-        pygmentize -O "linenos=True,linenostep=5" -o $tex_file $source_file
+        pygmentize -g -O "linenos=True,linenostep=5" -o $tex_file $source_file
         echo "\clearpage"           >> $bundle_file
         echo "\section{$title}"     >> $bundle_file
         echo "\input{$short_file}"  >> $bundle_file
