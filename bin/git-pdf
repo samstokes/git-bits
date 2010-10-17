@@ -119,6 +119,10 @@ for source_file in $commits $files; do
     fi
 done
 
+echo "Highlighting Big Fat Diff..."
+merge_base=`git merge-base ${master} ${feature}`
+git diff ${merge_base} ${feature} | pygmentize -l diff -o "$tex_dir/big_fat_diff.tex"
+echo "\clearpage\section{Big Fat Diff}\input{big_fat_diff.tex}" >> $bundle_file
 echo "\end{document}" >> $bundle_file
 
 ( cd "$tex_dir" && pdflatex $feature && pdflatex $feature && cd "$base_dir" && cp "${tex_dir}/${feature}.pdf" "." && rm -rf "$tex_dir" )
