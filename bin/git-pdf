@@ -1,5 +1,30 @@
 #!/bin/bash -e
 
+# Formats all the commits on a feature branch, and all the files they touch, as a PDF
+# file. That file may be transferred to your mobile device of choice, e.g. an iPad,
+# for code review on the go. :)
+#
+# This script assumes that you have checked out the feature branch as a local branch,
+# for example:
+#
+#   git checkout -b review.feature-foo origin/review.feature-foo
+#   git pdf review.feature-foo
+#
+# This will examine all commits since the `review.feature-foo` branch diverged from
+# `master`, and write the result to `review.feature-foo.pdf` in the current directory.
+# If you want to use something other than `master` as reference point, you can pass
+# that branch name as a second command line argument.
+#
+# Prerequisites (you should be able to get these through your OS package manager):
+# - git, obviously
+# - pygments (e.g. on Mac OS with MacPorts: `sudo port install py26-pygments`)
+# - pdflatex (e.g. on Mac OS with MacPorts: `sudo port install tetex`)
+#
+# Known bugs:
+# - no error handling
+# - doesn't work with remote branches
+# - LaTeX blows up if source files contain non-ascii characters
+
 GIT=`which git`
 
 feature=${1?Please specify feature name}
