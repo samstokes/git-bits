@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Opens gitk (set GIT_VISUAL to override), showing everything that has been merged into
+# beta since beta diverged from master.
+
+"${GIT_VISUAL:-gitk}" beta --merges --first-parent ^master
