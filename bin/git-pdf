@@ -7,14 +7,14 @@ master=${2:-master}
 
 range="${master}..${feature}"
 
-files=`git log --name-only --format=format: $range | sort | uniq`
+files=`$GIT log --name-only --format=format: $range | sort | uniq`
 
 tex_dir=`mktemp -d -t git-pdf`
 commits_dir=`mktemp -d -t git-pdf-commits`
 base_dir=`pwd`
 bundle_file="$tex_dir/${feature}.tex"
 
-commits=`git format-patch -o "$commits_dir" $range`
+commits=`$GIT format-patch -o "$commits_dir" $range`
 
 cat > $bundle_file << EOF
 \documentclass{article}
@@ -120,8 +120,8 @@ for source_file in $commits $files; do
 done
 
 echo "Highlighting Big Fat Diff..."
-merge_base=`git merge-base ${master} ${feature}`
-git diff ${merge_base} ${feature} | pygmentize -l diff -o "$tex_dir/big_fat_diff.tex"
+merge_base=`$GIT merge-base ${master} ${feature}`
+$GIT diff ${merge_base} ${feature} | pygmentize -l diff -o "$tex_dir/big_fat_diff.tex"
 echo "\clearpage\section{Big Fat Diff}\input{big_fat_diff.tex}" >> $bundle_file
 echo "\end{document}" >> $bundle_file
 
