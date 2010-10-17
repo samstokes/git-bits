@@ -115,9 +115,7 @@ for source_file in $commits $files; do
         echo "Highlighting $short_file..."
         mkdir -p $output_dir
         pygmentize -g -O "linenos=True,linenostep=5" -o $tex_file $source_file
-        echo "\clearpage"           >> $bundle_file
-        echo "\section{$title}"     >> $bundle_file
-        echo "\input{$short_file}"  >> $bundle_file
+        echo "\clearpage\section{$title}\input{$short_file}" >> $bundle_file
     fi
 done
 
