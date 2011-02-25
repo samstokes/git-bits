@@ -27,6 +27,10 @@ Shortcut for using `git difftool` to view the changes in a single commit.
 Merges a feature branch into the current branch, then deletes the feature
 branch.
 
+## git-nows ##
+Remove all the "bad whitespace" (as defined by git) from your uncommitted
+changes.
+
 ## git-pdf ##
 Given the name of a feature branch, builds a beautifully syntax-highlit PDF
 file containing all commits on that feature branch since it diverged from
