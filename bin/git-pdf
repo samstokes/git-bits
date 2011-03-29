@@ -34,8 +34,8 @@ range="${master}..${feature}"
 
 files=`$GIT log --name-only --format=format: $range | sort | uniq`
 
-tex_dir=`mktemp -d -t git-pdf`
-commits_dir=`mktemp -d -t git-pdf-commits`
+tex_dir=`mktemp -d -t git-pdf-XXXXXXXX`
+commits_dir=`mktemp -d -t git-pdf-commits-XXXXXXXX`
 base_dir=`pwd`
 bundle_file="$tex_dir/${feature}.tex"
 
