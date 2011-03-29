@@ -6,8 +6,9 @@
 #
 # e.g.
 #   git review-commits master..fix-widgets
+#   git review-commits integration..github/badger-widget ^github/snake-widget
 
-range=${1?Please specify range of commits to review}
+range=${@?Please specify range of commits to review}
 
 function redline() {
   echo -ne '\033[01;31m'
@@ -15,7 +16,7 @@ function redline() {
   echo -e '\033[00m'
 }
 
-for commit in `git rev-list --reverse "$1"`; do
+for commit in `git rev-list --reverse $range`; do
   echo -e "\033[01;31mReviewing commit \033[01;36m$commit\033[01;31m...\033[00m"
 
   git show --pretty=oneline --abbrev-commit $commit | head -1
