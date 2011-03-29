@@ -1,0 +1,7 @@
+#!/bin/bash
+# git-nows removes any un-added whitespace errors from your working tree.
+FILE=`tempfile`
+git diff "$@" > $FILE
+git apply -R $FILE
+git apply $FILE --whitespace=fix
+rm $FILE
