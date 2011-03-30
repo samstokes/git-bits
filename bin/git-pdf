@@ -25,7 +25,15 @@
 # - doesn't work with remote branches
 # - LaTeX blows up if source files contain non-ascii characters
 
-GIT=`which git`
+function check_prog () {
+  prog=$(which $1)
+  [[ -n $prog ]] || { echo "You'll need to install $1 first!" >&2; exit 1; }
+  echo $prog
+}
+
+GIT=$(check_prog git)
+PYGMENTIZE=$(check_prog pygmentize)
+PDFLATEX=$(check_prog pdflatex)
 
 feature=${1?Please specify feature name}
 master=${2:-master}
@@ -139,15 +147,15 @@ for source_file in $commits $files; do
         title=`echo "$short_file" | sed -e 's/_/\\\\_/g'`
         echo "Highlighting $short_file..."
         mkdir -p $output_dir
-        pygmentize -g -O "linenos=True,linenostep=5" -o $tex_file $source_file
+        "$PYGMENTIZE" -g -O "linenos=True,linenostep=5" -o $tex_file $source_file
         echo "\clearpage\section{$title}\input{$short_file}" >> $bundle_file
     fi
 done
 
 echo "Highlighting Big Fat Diff..."
 merge_base=`"$GIT" merge-base ${master} ${feature}`
-"$GIT" diff ${merge_base} ${feature} | pygmentize -l diff -o "$tex_dir/big_fat_diff.tex"
+"$GIT" diff ${merge_base} ${feature} | "$PYGMENTIZE" -l diff -o "$tex_dir/big_fat_diff.tex"
 echo "\clearpage\section{Big Fat Diff}\input{big_fat_diff.tex}" >> $bundle_file
 echo "\end{document}" >> $bundle_file
 
-( cd "$tex_dir" && pdflatex $feature && pdflatex $feature && cd "$base_dir" && cp "${tex_dir}/${feature}.pdf" "." && rm -rf "$tex_dir" "$commits_dir" )
+( cd "$tex_dir" && "$PDFLATEX" $feature && "$PDFLATEX" $feature && cd "$base_dir" && cp "${tex_dir}/${feature}.pdf" "." && rm -rf "$tex_dir" "$commits_dir" )
