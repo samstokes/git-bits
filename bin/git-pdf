@@ -17,9 +17,11 @@
 #
 # Prerequisites (you should be able to get these through your OS package manager):
 # - git, obviously
-# - pygments (e.g. on Mac OS with MacPorts: `sudo port install py26-pygments`)
-# - pdflatex (e.g. on Mac OS with MacPorts: `sudo port install tetex`)
-# - fancyvrb style package for latex
+# - pygments (e.g. on Mac OS with MacPorts: `sudo port install py26-pygments`;
+#   on Debian/Ubuntu, `sudo apt-get install python-pygments`)
+# - pdflatex (e.g. on Mac OS with MacPorts: `sudo port install tetex`;
+#   on Debian/Ubuntu, `sudo apt-get install texlive-latex-base`)
+# - fancyvrb style package for latex (on Debian/Ubuntu, `sudo apt-get install texlive-latex-recommended`)
 #
 # Known bugs:
 # - no error handling
