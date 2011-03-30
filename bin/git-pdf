@@ -19,6 +19,7 @@
 # - git, obviously
 # - pygments (e.g. on Mac OS with MacPorts: `sudo port install py26-pygments`)
 # - pdflatex (e.g. on Mac OS with MacPorts: `sudo port install tetex`)
+# - fancyvrb style package for latex
 #
 # Known bugs:
 # - no error handling
