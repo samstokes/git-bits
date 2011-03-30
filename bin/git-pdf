@@ -52,7 +52,7 @@ bundle_file="$tex_dir/${feature}.tex"
 
 commits=`"$GIT" format-patch -o "$commits_dir" $range`
 
-cat > $bundle_file << EOF
+cat > $bundle_file << 'EOF'
 \documentclass{article}
 \usepackage{fancyvrb}
 \usepackage{color}
@@ -133,6 +133,13 @@ cat > $bundle_file << EOF
 \def\PY@tok@k{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.00,0.50,0.00}{##1}}}
 \def\PY@tok@se{\let\PY@bf=\textbf\def\PY@tc##1{\textcolor[rgb]{0.73,0.40,0.13}{##1}}}
 \def\PY@tok@sd{\let\PY@it=\textit\def\PY@tc##1{\textcolor[rgb]{0.73,0.13,0.13}{##1}}}
+
+\def\PYZbs{\char`\\}
+\def\PYZus{\char`\_}
+\def\PYZob{\char`\{}
+\def\PYZcb{\char`\}}
+\def\PYZca{\char`\^}
+% for compatibility with earlier versions
 \def\PYZat{@}
 \def\PYZlb{[}
 \def\PYZrb{]}
