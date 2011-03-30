@@ -17,6 +17,7 @@
 #
 # Prerequisites (you should be able to get these through your OS package manager):
 # - git, obviously
+# - iconv (should be included with your libc)
 # - pygments (e.g. on Mac OS with MacPorts: `sudo port install py26-pygments`;
 #   on Debian/Ubuntu, `sudo apt-get install python-pygments`)
 # - pdflatex (e.g. on Mac OS with MacPorts: `sudo port install tetex`;
@@ -26,7 +27,7 @@
 # Known bugs:
 # - no error handling
 # - doesn't work with remote branches
-# - LaTeX blows up if source files contain non-ascii characters
+# - transliterates any characters not valid in latin1 encoding
 
 function check_prog () {
   prog=$(which $1)
@@ -35,6 +36,8 @@ function check_prog () {
 }
 
 GIT=$(check_prog git)
+ICONV=$(check_prog iconv)
+ICONV_OPTS="-f utf8 -t latin1//TRANSLIT"
 PYGMENTIZE=$(check_prog pygmentize)
 PDFLATEX=$(check_prog pdflatex)
 
@@ -157,14 +160,14 @@ for source_file in $commits $files; do
         title=`echo "$short_file" | sed -e 's/_/\\\\_/g'`
         echo "Highlighting $short_file..."
         mkdir -p $output_dir
-        "$PYGMENTIZE" -g -O "linenos=True,linenostep=5" -o $tex_file $source_file
+        "$ICONV" $ICONV_OPTS $source_file | "$PYGMENTIZE" -g -O "linenos=True,linenostep=5" -o $tex_file
         echo "\clearpage\section{$title}\input{$short_file}" >> $bundle_file
     fi
 done
 
 echo "Highlighting Big Fat Diff..."
 merge_base=`"$GIT" merge-base ${master} ${feature}`
-"$GIT" diff ${merge_base} ${feature} | "$PYGMENTIZE" -l diff -o "$tex_dir/big_fat_diff.tex"
+"$GIT" diff ${merge_base} ${feature} | "$ICONV" $ICONV_OPTS | "$PYGMENTIZE" -l diff -o "$tex_dir/big_fat_diff.tex"
 echo "\clearpage\section{Big Fat Diff}\input{big_fat_diff.tex}" >> $bundle_file
 echo "\end{document}" >> $bundle_file
 
