@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+error() {
+  echo "$@" >&2
+  exit 1
+}
+
+debug() {
+  if [[ -n $DEBUG ]]; then
+    echo "$@" >&2
+  fi
+}
+
+usage() {
+  echo "Usage: git last-branch [OPTIONS] [TARGET_REF]"
+  echo "OPTIONS:"
+  echo "    -d               output extra debug info"
+  echo "    -h               display this help message and exit"
+  echo
+  echo "    TARGET_REF       branch to start from (default: current branch)"
+}
+
+
+parent() {
+  local ref=$1
+  local parent=$(git describe --all --abbrev=0 "$ref"^ | sed -nE 's+^(heads|remotes|tags)/++p')
+  echo "$parent"
+}
+
+
+while getopts dh opt; do
+  case $opt in
+    d)
+      DEBUG=y
+      shift
+      ;;
+    h)
+      usage
+      exit 0
+      ;;
+  esac
+done
+
+
+target=${1:-HEAD}
+
+
+debug -n Targeting $target
+rev=$(git rev-parse "$target")
+debug " (revision ${rev::7})"
+
+branch=$(git describe --exact-match --all "$rev" | sed -n 's|^heads/||p')
+if [[ -n $branch ]]; then
+  debug Target branch is $branch
+fi
+
+parent=$(parent "$rev")
+
+if [[ $parent == $origin/$branch && master != $parent ]]; then
+  debug Skipping over remote branch
+  parent=$(parent "$origin/$branch")
+fi
+
+if [[ -n $parent ]]; then
+  echo "$parent"
+else
+  error "Couldn't determine parent ref for $target ($rev)"
+fi
